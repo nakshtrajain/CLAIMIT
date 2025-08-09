@@ -1,0 +1,1 @@
+# ClauseMind - Intelligent Clause Retriever & Decision System 

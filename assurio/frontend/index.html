@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClauseMind - Intelligent Clause Retriever</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border-radius: 15px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .result h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item strong {
+            color: #495057;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+            margin-top: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+            margin-top: 20px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status.approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.error {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .chunk-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .chunk-score {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .chunk-content {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .entity-tag {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 ClauseMind</h1>
+            <p>Intelligent Clause Retriever & Decision System</p>
+        </div>
+
+        <div class="content">
+            <!-- Health Check Section -->
+            <div class="section">
+                <h2>🔍 System Status</h2>
+                <button class="btn" onclick="checkHealth()">Check Health</button>
+                <div id="healthResult"></div>
+            </div>
+
+            <!-- Document Upload Section -->
+            <div class="section">
+                <h2>📄 Upload Document</h2>
+                <div class="form-group">
+                    <label for="documentFile">Select PDF Document:</label>
+                    <input type="file" id="documentFile" accept=".pdf" />
+                </div>
+                <button class="btn" onclick="uploadDocument()">Upload Document</button>
+                <div id="uploadResult"></div>
+            </div>
+
+            <!-- Query Section -->
+            <div class="section">
+                <h2>❓ Process Query</h2>
+                <div class="form-group">
+                    <label for="queryText">Enter your query:</label>
+                    <textarea id="queryText" rows="4" placeholder="e.g., 46M, knee surgery, Pune, 3-month policy"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="topK">Number of chunks to retrieve:</label>
+                    <select id="topK">
+                        <option value="3">3</option>
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="processQuery()">Process Query</button>
+                <div id="queryResult"></div>
+            </div>
+
+            <!-- Sample Queries -->
+            <div class="section">
+                <h2>💡 Sample Queries</h2>
+                <p>Try these sample queries to test the system:</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <button class="btn" style="background: #6c757d;" onclick="setQuery('46M, knee surgery, Pune, 3-month policy')">
+                        Knee Surgery Query
+                    </button>
+                    <button class="btn" style="background: #6c757d;" onclick="setQuery('What is covered for dental procedures?')">
+                        Dental Coverage Query
+                    </button>
+                    <button class="btn" style="background: #6c757d;" onclick="setQuery('Is pre-existing condition covered?')">
+                        Pre-existing Condition Query
+                    </button>
+                    <button class="btn" style="background: #6c757d;" onclick="setQuery('What is the claim process for hospitalization?')">
+                        Claim Process Query
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+
+        async function checkHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = '<div class="loading">Checking system health...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ System Healthy</h3>
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            <p><strong>Message:</strong> ${data.message}</p>
+                            <p><strong>Documents:</strong> ${data.document_count}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Connection error: ${error.message}</div>`;
+            }
+        }
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('documentFile');
+            const resultDiv = document.getElementById('uploadResult');
+
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<div class="error">Please select a file</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">Uploading document...</div>';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Document Uploaded Successfully</h3>
+                            <p><strong>Filename:</strong> ${data.filename}</p>
+                            <p><strong>Chunks Processed:</strong> ${data.chunks_processed}</p>
+                            <p><strong>Total Documents:</strong> ${data.total_documents}</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Upload error: ${error.message}</div>`;
+            }
+        }
+
+        async function processQuery() {
+            const queryText = document.getElementById('queryText').value;
+            const topK = document.getElementById('topK').value;
+            const resultDiv = document.getElementById('queryResult');
+
+            if (!queryText.trim()) {
+                resultDiv.innerHTML = '<div class="error">Please enter a query</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">Processing query...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: queryText,
+                        top_k: parseInt(topK)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <h3>📊 Query Results</h3>
+                            
+                            <div class="result-item">
+                                <strong>Query:</strong> ${data.query}
+                            </div>
+
+                            <div class="result-item">
+                                <strong>Extracted Entities:</strong><br>
+                                ${Object.entries(data.extracted_entities).map(([key, value]) => 
+                                    `<span class="entity-tag">${key}: ${value}</span>`
+                                ).join('')}
+                            </div>
+
+                            <div class="result-item">
+                                <strong>Decision:</strong> 
+                                <span class="status ${data.decision.toLowerCase()}">${data.decision}</span>
+                            </div>
+
+                            <div class="result-item">
+                                <strong>Amount:</strong> ${data.amount}
+                            </div>
+
+                            <div class="result-item">
+                                <strong>Justification:</strong><br>
+                                ${data.justification}
+                            </div>
+
+                            ${data.referenced_clauses.length > 0 ? `
+                                <div class="result-item">
+                                    <strong>Referenced Clauses:</strong><br>
+                                    ${data.referenced_clauses.map(clause => 
+                                        `<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px; font-style: italic;">"${clause}"</div>`
+                                    ).join('')}
+                                </div>
+                            ` : ''}
+
+                            <div class="result-item">
+                                <strong>Retrieved Chunks (${data.retrieved_chunks.length}):</strong><br>
+                                ${data.retrieved_chunks.map((chunk, index) => `
+                                    <div class="chunk-item">
+                                        <div class="chunk-score">Score: ${chunk.score.toFixed(3)}</div>
+                                        <div class="chunk-content">${chunk.content}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Query error: ${error.message}</div>`;
+            }
+        }
+
+        function setQuery(query) {
+            document.getElementById('queryText').value = query;
+        }
+
+        // Auto-check health on page load
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html> 

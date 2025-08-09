@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assurio - Enhanced Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#181a1b',
+                        'dark-card': '#23272b',
+                        'dark-border': '#343a40',
+                        'text-light': '#e0e0e0',
+                        'text-lighter': '#f1f1f1',
+                        'accent': '#667eea',
+                        'accent-hover': '#764ba2'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .upload-area {
+            border: 3px dashed #444a54;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #181a1b;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #232b2b;
+            transform: scale(1.02);
+        }
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status.approved {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.error {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body class="bg-black min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-text-lighter mb-2">Assurio</h1>
+            <p class="text-text-light text-lg">Your Personal Insurance Assistant</p>
+        </div>
+
+        <!-- Main Container -->
+        <div class="bg-dark-card border border-dark-border rounded-2xl p-8 shadow-2xl">
+            <!-- Upload Button -->
+            <button id="uploadBtn" disabled onclick="uploadDocument()" 
+                    class="w-full bg-gradient-to-r from-accent to-accent-hover text-white font-semibold py-3 px-6 rounded-lg mb-6 hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <span id="uploadSpinner" class="spinner hidden"></span>
+                Upload & Index Document
+            </button>
+
+            <!-- Document Upload Area -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold text-text-lighter mb-4 flex items-center gap-2">
+                    📄 Document Upload
+                </h2>
+                <div id="uploadArea" class="upload-area border-2 border-dashed rounded-xl p-8 text-center cursor-pointer relative bg-dark-bg">
+                    <div class="text-4xl mb-4">📁</div>
+                    <div class="text-text-light text-lg mb-2">Drag & Drop PDF here or click to browse</div>
+                    <div class="text-gray-400 text-sm">Supports PDF files up to 50MB</div>
+                    <input type="file" id="pdfFile" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                </div>
+                <div id="uploadResult" class="mt-4"></div>
+                <div id="uploadProgress" class="hidden mt-4">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <div id="progressText" class="text-center text-text-light mt-2">Processing...</div>
+                </div>
+            </div>
+
+            <!-- Query System -->
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold text-text-lighter mb-4 flex items-center gap-2">
+                    ❓ Query System
+                </h2>
+                <div class="mb-4">
+                    <label for="queryText" class="block text-text-light font-semibold mb-2">Enter your query:</label>
+                    <textarea id="queryText" rows="4" 
+                              class="w-full p-3 border-2 border-dark-border rounded-lg bg-dark-bg text-text-light focus:border-accent focus:outline-none transition-colors"
+                              placeholder="e.g., 46M, knee surgery, Pune, 3-month policy"></textarea>
+                </div>
+                <button id="queryBtn" onclick="processQuery()" 
+                        class="w-full bg-gradient-to-r from-accent to-accent-hover text-white font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+                    <span id="querySpinner" class="spinner hidden"></span>
+                    Process Query
+                </button>
+            </div>
+
+            <!-- Output Area -->
+            <div id="queryResult" class="min-h-[100px]"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api/v1';
+        let uploadedFiles = [];
+
+        // Function to refresh document count
+        async function refreshDocumentCount() {
+            try {
+                const response = await fetch(`${API_BASE}/documents`);
+                const data = await response.json();
+                console.log('Current document count:', data.document_count);
+                return data.document_count;
+            } catch (error) {
+                console.error('Error fetching document count:', error);
+                return 0;
+            }
+        }
+
+        // Function to refresh health status
+        async function refreshHealthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                console.log('Health status:', data);
+                return data.document_count;
+            } catch (error) {
+                console.error('Error fetching health status:', error);
+                return 0;
+            }
+        }
+
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('pdfFile');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                fileInput.files = files;
+                updateUploadButton();
+            }
+        });
+
+        fileInput.addEventListener('change', updateUploadButton);
+
+        function updateUploadButton() {
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = !fileInput.files[0];
+        }
+
+        async function uploadDocument() {
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('uploadResult');
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadSpinner = document.getElementById('uploadSpinner');
+
+            if (!file) {
+                resultDiv.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Please select a file</div>';
+                return;
+            }
+
+            progressDiv.classList.remove('hidden');
+            uploadBtn.disabled = true;
+            uploadSpinner.classList.remove('hidden');
+            resultDiv.innerHTML = '';
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `Processing... ${Math.round(progress)}%`;
+            }, 200);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                console.log('Uploading file:', file.name);
+                const response = await fetch(`${API_BASE}/upload_pdf`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Completed!';
+
+                // Debug: Log the response
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error(`Invalid JSON response: ${responseText}`);
+                }
+
+                console.log('Parsed response data:', data);
+
+                if (response.ok) {
+                    // Get the actual document count after upload
+                    const actualDocumentCount = await refreshDocumentCount();
+                    const actualHealthCount = await refreshHealthStatus();
+                    
+                    console.log('Actual document count from /documents:', actualDocumentCount);
+                    console.log('Actual document count from /health:', actualHealthCount);
+                    
+                    // Use the actual counts instead of the response counts
+                    const chunksIndexed = data.chunks_indexed || 0;
+                    const totalDocuments = Math.max(actualDocumentCount, actualHealthCount, data.total_documents || 0);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                            <h3 class="font-semibold">✅ Document Uploaded Successfully</h3>
+                            <p><strong>Filename:</strong> ${data.filename}</p>
+                            <p><strong>Chunks Indexed:</strong> ${chunksIndexed}</p>
+                            <p><strong>Total Documents:</strong> ${totalDocuments}</p>
+                            <p><strong>File Size:</strong> ${data.file_info && data.file_info.size ? (data.file_info.size / 1024 / 1024).toFixed(2) : 'Unknown'} MB</p>
+                        </div>
+                    `;
+                    
+                    fileInput.value = '';
+                    updateUploadButton();
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                resultDiv.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Upload error: ${error.message}</div>`;
+            } finally {
+                uploadBtn.disabled = false;
+                uploadSpinner.classList.add('hidden');
+                setTimeout(() => {
+                    progressDiv.classList.add('hidden');
+                }, 2000);
+            }
+        }
+
+        async function processQuery() {
+            const queryText = document.getElementById('queryText').value;
+            const topK = 5;
+            const resultDiv = document.getElementById('queryResult');
+            const queryBtn = document.getElementById('queryBtn');
+            const querySpinner = document.getElementById('querySpinner');
+
+            if (!queryText.trim()) {
+                resultDiv.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Please enter a query</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="text-center text-accent py-4">Processing query...</div>';
+            queryBtn.disabled = true;
+            querySpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: queryText,
+                        top_k: topK
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="bg-dark-bg border border-dark-border rounded-lg p-6">
+                            <div class="mb-4 p-4 bg-dark-card rounded-lg border-l-4 border-accent">
+                                <strong class="text-text-lighter">Decision:</strong> 
+                                <span class="status ${data.decision.toLowerCase()} ml-2">${data.decision}</span>
+                            </div>
+                            <div class="p-4 bg-dark-card rounded-lg border-l-4 border-accent">
+                                <strong class="text-text-lighter">Justification:</strong><br>
+                                <div class="text-text-light mt-2">${data.justification}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Error: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Query error: ${error.message}</div>`;
+            } finally {
+                queryBtn.disabled = false;
+                querySpinner.classList.add('hidden');
+            }
+        }
+
+        // Auto-check health and load files on page load
+        window.onload = async function() {
+            console.log('Page loaded, checking initial document count...');
+            const initialCount = await refreshDocumentCount();
+            console.log('Initial document count:', initialCount);
+        };
+    </script>
+</body>
+</html>
