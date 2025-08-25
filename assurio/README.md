@@ -1,6 +1,6 @@
-# Assurio - Intelligent Clause Retriever & Decision System
+# ClaimIt - Intelligent Clause Retriever & Decision System
 
-Assurio is an intelligent system that uses LLM-powered semantic search to retrieve relevant clauses from insurance documents and provide automated decision-making.
+ClaimIt is an intelligent system that uses LLM-powered semantic search to retrieve relevant clauses from insurance documents and provide automated decision-making.
 
 ---
 
