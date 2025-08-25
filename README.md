@@ -1,6 +1,6 @@
- Assurio – Intelligent Clause Retriever & Decision System
+ ClaimIt – Intelligent Clause Retriever & Decision System
 
-Assurio is an AI-powered insurance assistant that enables users to upload PDF insurance documents, automatically indexes them using semantic embeddings, and allows natural language querying to retrieve relevant clauses and provide automated decisions.
+ClaimIt is an AI-powered insurance assistant that enables users to choose insurance correctly, automatically indexes them using semantic embeddings, and allows natural language querying to retrieve relevant clauses and provide automated decisions.
 
  🚀 Features
 
